@@ -11,7 +11,31 @@ const SAMPLE_TASKS = [
 ];
 
 let tasks = [];
-let weatherByRegion = {};   // 03 단원에서 지역별 날씨를 넣음
+let weatherByRegion = {};
+
+// 실제 API 연결 시 이 함수에서 같은 형식의 지역별 데이터를 반환한다.
+// { 지역: { tempMax: 섭씨, windMax: m/s, rainProb: 0~100 } | null }
+async function getWeatherByRegion() {
+  return {
+    '세종': { tempMax: 23, windMax: 3, rainProb: 20 },
+    '태안': { tempMax: 21, windMax: 12, rainProb: 30 },
+    '보령': { tempMax: 20, windMax: 5, rainProb: 80 },
+    '대전': null,
+  };
+}
+
+async function loadWeather() {
+  const box = document.getElementById('weatherBox');
+  try {
+    weatherByRegion = await getWeatherByRegion();
+    box.textContent = Object.entries(weatherByRegion)
+      .map(([region, w]) => region + ' ' + (w ? weatherText(w) : '확인 전')).join(' / ');
+  } catch (error) {
+    weatherByRegion = {};
+    box.textContent = '날씨를 불러오지 못했습니다. 날씨 확인 전으로 표시합니다.';
+  }
+  renderTasks();
+}
 
 function loadTasks() {
   const saved = JSON.parse(localStorage.getItem('wx_added') || '[]');
@@ -29,14 +53,19 @@ function renderTasks() {
     const w = weatherByRegion[t.region];
     const r = judge(t.kind, w);
     const tr = document.createElement('tr');
-    for (const v of [t.title, t.region, t.kind, t.owner, weatherText(w)]) {
+    const labels = ['일정', '지역', '구분', '담당', '날씨'];
+    for (const [i, v] of [t.title, t.region, t.kind, t.owner, weatherText(w)].entries()) {
       const td = document.createElement('td');
+      td.dataset.label = labels[i];
       td.textContent = v;
       tr.appendChild(td);
     }
     const td = document.createElement('td');
-    td.textContent = r.text;
-    td.className = r.level;
+    td.dataset.label = '판단';
+    const badge = document.createElement('span');
+    badge.textContent = r.text;
+    badge.className = 'badge badge-' + r.level;
+    td.appendChild(badge);
     tr.appendChild(td);
     body.appendChild(tr);
   }
@@ -62,3 +91,4 @@ function addTask(e) {
 document.getElementById('taskForm').addEventListener('submit', addTask);
 loadTasks();
 renderTasks();
+loadWeather();

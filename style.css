@@ -1,16 +1,45 @@
-body { font-family: "Malgun Gothic", sans-serif; max-width: 920px; margin: 0 auto; padding: 16px; background: #f4f7f2; color: #222; }
-header h1 { margin: 8px 0 0; color: #2f6b22; }
-.sub { margin: 4px 0 16px; color: #666; }
-.card { background: #fff; border: 1px solid #d5e3c9; border-radius: 8px; padding: 14px 16px; margin-bottom: 14px; }
-h2 { font-size: 18px; margin: 0 0 10px; }
+﻿* { box-sizing: border-box; }
+body { font-family: "Malgun Gothic", sans-serif; max-width: 1080px; margin: 0 auto; padding: 28px 20px; background: #f3f6f4; color: #23352e; line-height: 1.6; }
+header { margin-bottom: 24px; }
+header h1 { margin: 8px 0; color: #245b40; font-size: clamp(25px, 5vw, 34px); letter-spacing: -1px; }
+.sub { margin: 4px 0; color: #5d6c64; }
+.card { background: #fff; border: 1px solid #dce6df; border-radius: 16px; padding: 24px; margin-bottom: 20px; }
+h2 { font-size: 19px; margin: 0 0 16px; }
+.weather-panel { border-top: 4px solid #3b805a; }
+.demo-label { display: inline-block; font-size: 12px; font-weight: normal; background: #edf2ef; padding: 3px 9px; border-radius: 6px; vertical-align: middle; }
+#weatherBox { margin: 0; overflow-wrap: anywhere; }
+.weather-help { font-size: 13px; color: #627269; margin: 8px 0 16px; }
+.legend { display: flex; flex-wrap: wrap; gap: 8px; }
 table { width: 100%; border-collapse: collapse; }
-th, td { border-bottom: 1px solid #e3e3e3; padding: 6px 4px; text-align: left; font-size: 14px; }
-th { background: #eaf3e3; }
-form { display: flex; flex-wrap: wrap; gap: 6px; }
-input, select, button { padding: 6px 8px; font-size: 14px; }
-button { background: #4e8a36; color: #fff; border: 0; border-radius: 4px; cursor: pointer; }
-.ok   { color: #2f6b22; font-weight: bold; }
-.warn { color: #b26a00; font-weight: bold; }
-.stop { color: #c62828; font-weight: bold; }
-.none { color: #888; }
-#msgBox { color: #c62828; min-height: 1em; }
+th, td { border-bottom: 1px solid #e8ede9; padding: 14px 8px; text-align: left; font-size: 14px; overflow-wrap: anywhere; }
+th { background: #f1f6f2; color: #53675b; font-size: 12px; }
+td:first-child { font-weight: bold; }
+td:nth-child(5) { max-width: 175px; color: #627269; }
+.badge { display: inline-flex; align-items: center; gap: 6px; border: 1px solid; border-radius: 999px; padding: 5px 10px; font-size: 12px; font-weight: bold; white-space: nowrap; line-height: 1.5; }
+.badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.badge-ok { background: #e6f5eb; color: #21633d; border-color: #b9dfc7; }
+.badge-wind { background: #fff4c4; color: #795600; border-color: #efd578; }
+.badge-rain { background: #ffebeb; color: #a32c32; border-color: #f2bdc0; }
+.badge-none { background: #edf0f2; color: #53616b; border-color: #cdd5da; }
+form { display: grid; grid-template-columns: 2fr 1fr 1fr 1.3fr auto; align-items: end; gap: 12px; }
+label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: bold; min-width: 0; }
+input, select, button { font: inherit; min-height: 44px; border-radius: 8px; padding: 10px 12px; }
+input, select { width: 100%; min-width: 0; border: 1px solid #cbd8cf; background: #fff; color: #23352e; font-size: 16px; }
+button { background: #2f714c; color: #fff; border: 0; cursor: pointer; font-weight: bold; }
+button:hover { background: #245b40; }
+:focus-visible { outline: 3px solid #95bda5; outline-offset: 3px; }
+#msgBox { color: #a32c32; margin: 0; }
+@media (max-width: 700px) {
+  body { padding: 16px 12px; }
+  .card { padding: 18px 14px; border-radius: 12px; }
+  form { grid-template-columns: 1fr 1fr; }
+  form label:first-child, form label:nth-child(4), form button { grid-column: 1 / -1; }
+  table, tbody { display: block; }
+  thead { position: absolute; width: 1px; height: 1px; padding: 0; overflow: hidden; clip-path: inset(50%); }
+  tr { display: grid; grid-template-columns: 1fr 1fr; border: 1px solid #dce6df; border-radius: 10px; padding: 12px; margin-bottom: 12px; gap: 8px 12px; }
+  td { display: block; border: 0; padding: 0; min-width: 0; }
+  td::before { content: attr(data-label); display: block; color: #627269; font-size: 11px; font-weight: normal; margin-bottom: 3px; }
+  td:first-child { grid-column: 1 / -1; font-size: 16px; padding-bottom: 8px; border-bottom: 1px solid #edf1ee; }
+  td:nth-child(5), td:last-child { grid-column: 1 / -1; max-width: none; }
+  td:last-child { padding-top: 4px; }
+}

@@ -13,7 +13,17 @@
     <p class="sub">오늘 현장 점검 · 야외 행사 · 시설 보수 일정 (교육용 가상 데이터)</p>
   </header>
 
-  <section id="weatherBox" class="card">날씨 정보 없음 (03 단원에서 연결)</section>
+  <section class="card weather-panel" aria-label="가상 날씨 안내">
+    <h2>지역별 날씨 <span class="demo-label">가상 데이터</span></h2>
+    <p id="weatherBox" role="status">가상 날씨를 불러오는 중입니다.</p>
+    <p class="weather-help">최고 기온 / 최대 풍속 / 강수확률 · 교육용 가상 기준입니다.</p>
+    <div class="legend" aria-label="판단 배지 안내">
+      <span class="badge badge-ok">정상 진행</span>
+      <span class="badge badge-wind">강풍 주의</span>
+      <span class="badge badge-rain">우천 대비 필요</span>
+      <span class="badge badge-none">날씨 확인 전</span>
+    </div>
+  </section>
 
   <section class="card">
     <h2>오늘 일정</h2>
@@ -26,10 +36,10 @@
   <section class="card">
     <h2>일정 추가</h2>
     <form id="taskForm">
-      <input id="titleInput" placeholder="일정 이름" required>
-      <select id="regionInput"><option>세종</option><option>대전</option><option>태안</option><option>보령</option></select>
-      <select id="kindInput"><option>야외</option><option>고소</option><option>실내</option></select>
-      <input id="ownerInput" placeholder="담당" required>
+      <label>일정 이름<input id="titleInput" placeholder="가상 일정 이름" required></label>
+      <label>지역<select id="regionInput"><option>세종</option><option>대전</option><option>태안</option><option>보령</option></select></label>
+      <label>구분<select id="kindInput"><option>야외</option><option>고소</option><option>실내</option></select></label>
+      <label>담당<input id="ownerInput" placeholder="가상 담당자" required></label>
       <button>추가</button>
     </form>
     <p id="msgBox"></p>
