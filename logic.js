@@ -18,6 +18,9 @@ function getKoreaDate(now = new Date()) {
 }
 
 function buildWeatherUrl(region, serviceKey, now = new Date()) {
+  if (typeof region !== 'string' || !Object.hasOwn(REGIONS, region)) {
+    throw new Error('지원하지 않는 지역');
+  }
   const coordinates = REGIONS[region];
   if (!coordinates) throw new Error('지원하지 않는 지역');
   if (!serviceKey) throw new Error('인증키 필요');
@@ -31,12 +34,18 @@ function buildWeatherUrl(region, serviceKey, now = new Date()) {
 }
 
 function parseWeatherResponse(data, today, testWind = false) {
+  if (typeof today !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(today)) return null;
   if (data?.response?.header?.resultCode !== '00') return null;
   const items = data.response.body?.items?.item;
   if (!Array.isArray(items)) return null;
   const values = { TMX: new Map(), WSD: new Map(), POP: new Map() };
+  const targetDate = today.replaceAll('-', '');
   for (const item of items) {
-    if (item.fcstDate !== today.replaceAll('-', '') || !values[item.category]) continue;
+    if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
+    if (item.fcstDate !== targetDate) continue;
+    // SKY 등 다른 정상 예보 항목은 무시하며 상속 속성은 허용하지 않는다.
+    if (typeof item.category !== 'string' || !Object.hasOwn(values, item.category)) continue;
+    if (typeof item.fcstTime !== 'string' || !/^(?:[01]\d|2[0-3])00$/.test(item.fcstTime)) return null;
     if (typeof item.fcstValue !== 'string' && typeof item.fcstValue !== 'number') return null;
     if (String(item.fcstValue).trim() === '') return null;
     const value = Number(item.fcstValue);
