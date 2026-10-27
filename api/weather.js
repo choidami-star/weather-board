@@ -11,7 +11,7 @@ module.exports = async function handler(req, res) {
   if (typeof region !== 'string' || !Object.hasOwn(REGIONS, region)) {
     return res.status(400).json({ error: '지원하지 않는 지역입니다.' });
   }
-  const serviceKey = process.env.KMA_SERVICE_KEY?.trim();
+  const serviceKey = process.env.KMA_KEY?.trim() || process.env.KMA_SERVICE_KEY?.trim();
   if (!serviceKey) return res.status(503).json({ error: '서버의 기상청 인증키 설정이 필요합니다.' });
   const now = new Date();
   const date = getKoreaDate(now);

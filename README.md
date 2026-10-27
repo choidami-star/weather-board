@@ -15,7 +15,7 @@ SQL에 정의된 열: id(UUID 자동), created_at(서버 시각), title, region,
 
 ## Vercel과 날씨 설정
 - GitHub 저장소를 Vercel에 연결하고 Framework Preset을 Other로 설정합니다. 빌드 명령과 별도 출력 폴더는 필요 없습니다.
-- Vercel 환경 변수 `KMA_SERVICE_KEY`에 기상청 일반 인증키(Decoding)를 설정하고 Redeploy합니다. 이 키는 config.js나 GitHub에 넣지 않습니다.
+- Vercel 환경 변수 `KMA_KEY`에 기상청 일반 인증키(Decoding)를 설정하고 Redeploy합니다. 기존 `KMA_SERVICE_KEY`도 호환하며 KMA_KEY가 우선입니다. 이 키는 config.js나 GitHub에 넣지 않습니다.
 - 로컬 날씨 호출은 `vercel link`, `vercel env pull .env.local`, `vercel dev`로 실행합니다. `.env.local`은 Git에서 제외됩니다.
 - HTML 더블클릭 시에도 인터넷과 Supabase 설정이 있으면 DB 접근을 시도합니다. 기상청 날씨는 Vercel 또는 vercel dev가 필요합니다. 배포 주소에서 확인하는 것을 권장합니다.
 
@@ -41,3 +41,10 @@ SQL에 정의된 열: id(UUID 자동), created_at(서버 시각), title, region,
 - T-16: SQL에서 지역 또는 구분을 허용 목록 밖의 값으로 INSERT하면 CHECK 오류인지 확인. 공개 키를 사용하는 Data API에서 UPDATE/DELETE는 거부되어야 합니다(SQL Editor 관리자 권한과 구분).
 
 Supabase 공식 문서: https://supabase.com/docs/reference/javascript/installing 및 https://supabase.com/docs/guides/database/secure-data
+
+## 지역 일정·날씨·판단 통합 조회
+`GET /api/kma?region=대전` (세종·대전·태안·보령 지원)을 배포 주소에서 호출합니다. `region`, 한국 날짜 `date`, `weather: {tempMax,windMax,rainProb}`, `tasks` 배열을 반환합니다. 각 일정에는 DB 필드와 `judgment: {level,text}`가 포함됩니다. 등록 일정이 없으면 tasks는 빈 배열입니다. 날씨와 판단은 DB에 저장하지 않고 요청 시 계산합니다.
+
+날씨 실패 또는 KMA_KEY 미설정은 weather:null과 warning으로 알리며 DB 일정은 반환합니다. 기존 규칙에 따라 실내는 정상, 나머지는 미확인입니다. DB 실패는 502, 연결 설정 없음은 503, 잘못된 지역은 400, GET 외 요청은 405입니다. 인증키와 원본 오류는 반환하지 않습니다. config.js의 두 설정 줄에 브라우저·서버 공용 내보내기만 덧붙였으며 값은 유지합니다. 별도 외부 스크립트는 추가하지 않습니다.
+
+T-17·T-18: 대전 통합 조회의 일정·날씨·판단, 빈 목록, 날씨 실패 시 목록 유지, 잘못된 지역의 오류를 확인합니다. DB 쓰기는 기존 화면 추가 기능에서만 합니다.
