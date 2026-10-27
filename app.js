@@ -13,15 +13,26 @@ const SAMPLE_TASKS = [
 let tasks = [];
 let weatherByRegion = {};
 
-// 실제 API 연결 시 이 함수에서 같은 형식의 지역별 데이터를 반환한다.
-// { 지역: { tempMax: 섭씨, windMax: m/s, rainProb: 0~100 } | null }
+const testWind = new URLSearchParams(window.location.search).get('test') === 'wind';
+
+// 한 지역의 실패가 다른 지역에 영향을 주지 않도록 개별 결과를 받는다.
 async function getWeatherByRegion() {
-  return {
-    '세종': { tempMax: 23, windMax: 3, rainProb: 20 },
-    '태안': { tempMax: 21, windMax: 12, rainProb: 30 },
-    '보령': { tempMax: 20, windMax: 5, rainProb: 80 },
-    '대전': null,
-  };
+  const today = getKoreaDate();
+  const regions = Object.keys(REGIONS);
+  const results = await Promise.allSettled(regions.map(async region => {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 10000);
+    try {
+      const response = await fetch(buildWeatherUrl(region), { signal: controller.signal });
+      if (!response.ok) throw new Error('날씨 API HTTP ' + response.status);
+      return parseWeatherResponse(await response.json(), today, testWind);
+    } finally {
+      clearTimeout(timeout);
+    }
+  }));
+  return Object.fromEntries(regions.map((region, index) => [
+    region, results[index].status === 'fulfilled' ? results[index].value : null,
+  ]));
 }
 
 async function loadWeather() {
@@ -30,9 +41,12 @@ async function loadWeather() {
     weatherByRegion = await getWeatherByRegion();
     box.textContent = Object.entries(weatherByRegion)
       .map(([region, w]) => region + ' ' + (w ? weatherText(w) : '확인 전')).join(' / ');
+    if (Object.values(weatherByRegion).some(w => !w)) {
+      box.textContent += ' · 일부 날씨를 받지 못했습니다. 미확인 지역은 날씨 확인 전으로 표시합니다(실내 제외).';
+    }
   } catch (error) {
     weatherByRegion = {};
-    box.textContent = '날씨를 불러오지 못했습니다. 날씨 확인 전으로 표시합니다.';
+    box.textContent = '날씨를 불러오지 못했습니다. 날씨 확인 전으로 표시합니다(실내 제외).';
   }
   renderTasks();
 }
@@ -89,6 +103,9 @@ function addTask(e) {
 }
 
 document.getElementById('taskForm').addEventListener('submit', addTask);
+if (testWind) {
+  document.getElementById('testNotice').hidden = false;
+}
 loadTasks();
 renderTasks();
 loadWeather();
