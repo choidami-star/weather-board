@@ -5,6 +5,13 @@ header h1 { margin: 8px 0; color: #245b40; font-size: clamp(25px, 5vw, 34px); le
 .sub { margin: 4px 0; color: #5d6c64; }
 .card { background: #fff; border: 1px solid #dce6df; border-radius: 16px; padding: 24px; margin-bottom: 20px; }
 h2 { font-size: 19px; margin: 0 0 16px; }
+.schedule-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
+.schedule-heading h2 { margin: 0; }
+.schedule-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.schedule-filters button { background: #edf0ee; color: #53675b; border: 1px solid #dce6df; border-radius: 999px; font-size: 14px; }
+.schedule-filters button[aria-pressed="true"] { background: #2f714c; border-color: #2f714c; color: #fff; }
+.schedule-filters button:hover { border-color: #2f714c; }
+#filterEmpty { padding: 20px 12px; border-radius: 10px; background: #f1f6f2; color: #53675b; text-align: center; }
 .weather-panel { border-top: 4px solid #3b805a; }
 .demo-label { display: inline-block; font-size: 12px; font-weight: normal; background: #edf2ef; padding: 3px 9px; border-radius: 6px; vertical-align: middle; }
 #weatherBox { margin: 0; overflow-wrap: anywhere; }

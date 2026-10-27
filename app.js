@@ -4,6 +4,8 @@ let baseTasks = [];
 let addedTasks = [];
 let tasks = [];
 let weatherByRegion = {};
+let selectedFilter = 'all';
+let tasksLoading = true;
 
 const testWind = new URLSearchParams(window.location.search).get('test') === 'wind';
 
@@ -58,6 +60,7 @@ function isTask(task) {
 }
 
 async function loadTasks() {
+  tasksLoading = true;
   const status = document.getElementById('taskStatus');
   const button = document.querySelector('#taskForm button');
   button.disabled = true;
@@ -89,6 +92,7 @@ async function loadTasks() {
     document.getElementById('msgBox').textContent = '브라우저에 저장된 추가 일정을 읽지 못했습니다.';
   }
   tasks = baseTasks.concat(addedTasks);
+  tasksLoading = false;
   renderTasks();
   button.disabled = false;
 }
@@ -100,9 +104,12 @@ function weatherText(w) {
 function renderTasks() {
   const body = document.getElementById('taskList');
   body.innerHTML = '';
+  let visibleCount = 0;
   for (const t of tasks) {
     const w = weatherByRegion[t.region];
     const r = judge(t.kind, w);
+    if (selectedFilter === 'attention' && r.level !== 'wind' && r.level !== 'rain') continue;
+    visibleCount += 1;
     const tr = document.createElement('tr');
     const labels = ['일정', '지역', '구분', '담당', '날씨'];
     for (const [i, v] of [t.title, t.region, t.kind, t.owner, weatherText(w)].entries()) {
@@ -120,6 +127,14 @@ function renderTasks() {
     tr.appendChild(td);
     body.appendChild(tr);
   }
+  document.getElementById('filterEmpty').hidden = tasksLoading || selectedFilter !== 'attention' || visibleCount > 0;
+}
+
+function setFilter(filter) {
+  selectedFilter = filter;
+  document.getElementById('filterAll').setAttribute('aria-pressed', String(filter === 'all'));
+  document.getElementById('filterAttention').setAttribute('aria-pressed', String(filter === 'attention'));
+  renderTasks();
 }
 
 function addTask(e) {
@@ -146,6 +161,8 @@ function addTask(e) {
 }
 
 document.getElementById('taskForm').addEventListener('submit', addTask);
+document.getElementById('filterAll').addEventListener('click', () => setFilter('all'));
+document.getElementById('filterAttention').addEventListener('click', () => setFilter('attention'));
 if (testWind) {
   document.getElementById('testNotice').hidden = false;
 }
