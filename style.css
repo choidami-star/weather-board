@@ -8,6 +8,9 @@ h2 { font-size: 19px; margin: 0 0 16px; }
 .schedule-heading { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; margin-bottom: 16px; }
 .schedule-heading h2 { margin: 0; }
 .schedule-filters { display: flex; flex-wrap: wrap; gap: 8px; }
+.schedule-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+#saveMarkdown { font-size: 14px; }
+#saveMarkdown:disabled { opacity: .5; cursor: wait; }
 .schedule-filters button { background: #edf0ee; color: #53675b; border: 1px solid #dce6df; border-radius: 999px; font-size: 14px; }
 .schedule-filters button[aria-pressed="true"] { background: #2f714c; border-color: #2f714c; color: #fff; }
 .schedule-filters button:hover { border-color: #2f714c; }

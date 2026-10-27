@@ -6,6 +6,7 @@ let tasks = [];
 let weatherByRegion = {};
 let selectedFilter = 'all';
 let tasksLoading = true;
+let displayedRows = [];
 
 const testWind = new URLSearchParams(window.location.search).get('test') === 'wind';
 
@@ -61,6 +62,7 @@ function isTask(task) {
 
 async function loadTasks() {
   tasksLoading = true;
+  document.getElementById('saveMarkdown').disabled = true;
   const status = document.getElementById('taskStatus');
   const button = document.querySelector('#taskForm button');
   button.disabled = true;
@@ -104,12 +106,14 @@ function weatherText(w) {
 function renderTasks() {
   const body = document.getElementById('taskList');
   body.innerHTML = '';
+  displayedRows = [];
   let visibleCount = 0;
   for (const t of tasks) {
     const w = weatherByRegion[t.region];
     const r = judge(t.kind, w);
     if (selectedFilter === 'attention' && r.level !== 'wind' && r.level !== 'rain') continue;
     visibleCount += 1;
+    displayedRows.push([t.title, t.region, t.kind, t.owner, weatherText(w), r.text]);
     const tr = document.createElement('tr');
     const labels = ['일정', '지역', '구분', '담당', '날씨'];
     for (const [i, v] of [t.title, t.region, t.kind, t.owner, weatherText(w)].entries()) {
@@ -128,6 +132,21 @@ function renderTasks() {
     body.appendChild(tr);
   }
   document.getElementById('filterEmpty').hidden = tasksLoading || selectedFilter !== 'attention' || visibleCount > 0;
+  document.getElementById('saveMarkdown').disabled = tasksLoading;
+}
+
+function saveJudgmentMarkdown() {
+  if (tasksLoading) return;
+  const date = getKoreaDate();
+  const markdown = createJudgmentMarkdown(displayedRows, date, { filter: selectedFilter, testWind });
+  const url = URL.createObjectURL(new Blob([markdown], { type: 'text/markdown;charset=utf-8' }));
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = '현장일정_판단_' + date + '.md';
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
 
 function setFilter(filter) {
@@ -163,6 +182,7 @@ function addTask(e) {
 document.getElementById('taskForm').addEventListener('submit', addTask);
 document.getElementById('filterAll').addEventListener('click', () => setFilter('all'));
 document.getElementById('filterAttention').addEventListener('click', () => setFilter('attention'));
+document.getElementById('saveMarkdown').addEventListener('click', saveJudgmentMarkdown);
 if (testWind) {
   document.getElementById('testNotice').hidden = false;
 }

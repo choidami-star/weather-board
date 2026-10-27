@@ -65,6 +65,28 @@ function judge(kind, w) {
   return { level: 'ok', text: '정상 진행' };
 }
 
+// 화면과 같은 값으로 구성한 행을 받아 문서만 만든다. DOM 접근 없음.
+function createJudgmentMarkdown(rows, date, { filter = 'all', testWind = false } = {}) {
+  const escapeCell = value => String(value ?? '')
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    .replace(/\\/g, '&#92;').replace(/\|/g, '&#124;')
+    .replace(/`/g, '&#96;').replace(/\*/g, '&#42;').replace(/_/g, '&#95;')
+    .replace(/\[/g, '&#91;').replace(/\]/g, '&#93;')
+    .replace(/\r\n|\r|\n/g, '<br>');
+  const lines = [
+    '# 현장 일정 날씨판 — ' + date,
+    '',
+    '표시 범위: ' + (filter === 'attention' ? '주의 일정만' : '전체 일정'),
+    '일정·담당자는 가상 데이터이며 판단은 교육용 가상 기준입니다.',
+  ];
+  if (testWind) lines.push('풍속 시험 모드: 정상 수신한 풍속을 12m/s로 바꾼 결과입니다.');
+  lines.push('', '| 일정 | 지역 | 구분 | 담당 | 날씨 | 판단 |', '| --- | --- | --- | --- | --- | --- |');
+  for (const row of rows) lines.push('| ' + row.map(escapeCell).join(' | ') + ' |');
+  if (!rows.length) lines.push('', filter === 'attention' ? '현재 주의가 필요한 일정이 없습니다.' : '표시할 일정이 없습니다.');
+  lines.push('', `판단 기준: 풍속 ${RULES.wind}m/s 이상 강풍 주의 · 강수확률 ${RULES.rain}% 이상 우천 대비 필요(우선) · 기온은 표시만 하며 판단에 사용하지 않음 · 실내는 정상 진행`, '');
+  return lines.join('\n');
+}
+
 if (typeof module !== 'undefined') {
-  module.exports = { RULES, REGIONS, getKoreaDate, buildWeatherUrl, parseWeatherResponse, judge };
+  module.exports = { RULES, REGIONS, getKoreaDate, buildWeatherUrl, parseWeatherResponse, judge, createJudgmentMarkdown };
 }
