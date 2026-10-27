@@ -23,9 +23,14 @@ async function getWeatherByRegion() {
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), 10000);
     try {
-      const response = await fetch(buildWeatherUrl(region), { signal: controller.signal });
+      const response = await fetch('/api/weather?' + new URLSearchParams({ region }), { signal: controller.signal });
       if (!response.ok) throw new Error('날씨 API HTTP ' + response.status);
-      return parseWeatherResponse(await response.json(), today, testWind);
+      const data = await response.json();
+      const w = data.weather;
+      if (data.date !== today || data.region !== region || !w ||
+          ![w.tempMax, w.windMax, w.rainProb].every(Number.isFinite) ||
+          w.windMax < 0 || w.rainProb < 0 || w.rainProb > 100) return null;
+      return { ...w, windMax: testWind ? 12 : w.windMax };
     } finally {
       clearTimeout(timeout);
     }
@@ -37,6 +42,10 @@ async function getWeatherByRegion() {
 
 async function loadWeather() {
   const box = document.getElementById('weatherBox');
+  if (window.location.protocol === 'file:') {
+    box.textContent = '일정은 로컬에서 사용할 수 있습니다. 기상청 날씨는 Vercel 배포 주소 또는 vercel dev로 실행해 주세요.';
+    return;
+  }
   try {
     weatherByRegion = await getWeatherByRegion();
     box.textContent = Object.entries(weatherByRegion)

@@ -5,10 +5,10 @@ const RULES = { wind: 10, rain: 60 };
 
 // 지역 중심의 대표 좌표. 네트워크 호출과 화면 접근은 app.js에서만 한다.
 const REGIONS = {
-  '세종': { latitude: 36.4800, longitude: 127.2890 },
-  '대전': { latitude: 36.3504, longitude: 127.3845 },
-  '태안': { latitude: 36.7456, longitude: 126.2983 },
-  '보령': { latitude: 36.3334, longitude: 126.6129 },
+  '세종': { nx: 66, ny: 103 },
+  '대전': { nx: 67, ny: 100 },
+  '태안': { nx: 48, ny: 109 },
+  '보령': { nx: 54, ny: 100 },
 };
 
 function getKoreaDate(now = new Date()) {
@@ -17,34 +17,40 @@ function getKoreaDate(now = new Date()) {
   }).format(now);
 }
 
-function buildWeatherUrl(region) {
+function buildWeatherUrl(region, serviceKey, now = new Date()) {
   const coordinates = REGIONS[region];
   if (!coordinates) throw new Error('지원하지 않는 지역');
+  if (!serviceKey) throw new Error('인증키 필요');
+  // 오늘 전체 시간대를 포함하기 위해 전날 23시 발표 예보를 사용한다.
+  const yesterday = getKoreaDate(new Date(now.getTime() - 86400000)).replaceAll('-', '');
   const params = new URLSearchParams({
-    latitude: coordinates.latitude,
-    longitude: coordinates.longitude,
-    daily: 'temperature_2m_max,wind_speed_10m_max,precipitation_probability_max',
-    temperature_unit: 'celsius',
-    wind_speed_unit: 'ms',
-    timezone: 'Asia/Seoul',
-    forecast_days: '1',
+    serviceKey, pageNo: '1', numOfRows: '1000', dataType: 'JSON',
+    base_date: yesterday, base_time: '2300', nx: coordinates.nx, ny: coordinates.ny,
   });
-  return 'https://api.open-meteo.com/v1/forecast?' + params;
+  return 'https://apis.data.go.kr/1360000/VilageFcstInfoService_2.0/getVilageFcst?' + params;
 }
 
 function parseWeatherResponse(data, today, testWind = false) {
-  if (data?.error) return null;
-  const daily = data?.daily;
-  const index = Array.isArray(daily?.time) ? daily.time.indexOf(today) : -1;
-  if (index < 0) return null;
-  const tempMax = daily.temperature_2m_max?.[index];
-  const windMax = daily.wind_speed_10m_max?.[index];
-  const rainProb = daily.precipitation_probability_max?.[index];
-  if (![tempMax, windMax, rainProb].every(Number.isFinite) ||
-      windMax < 0 || rainProb < 0 || rainProb > 100 ||
-      data.daily_units?.temperature_2m_max !== '°C' ||
-      data.daily_units?.wind_speed_10m_max !== 'm/s' ||
-      data.daily_units?.precipitation_probability_max !== '%') return null;
+  if (data?.response?.header?.resultCode !== '00') return null;
+  const items = data.response.body?.items?.item;
+  if (!Array.isArray(items)) return null;
+  const values = { TMX: new Map(), WSD: new Map(), POP: new Map() };
+  for (const item of items) {
+    if (item.fcstDate !== today.replaceAll('-', '') || !values[item.category]) continue;
+    if (typeof item.fcstValue !== 'string' && typeof item.fcstValue !== 'number') return null;
+    if (String(item.fcstValue).trim() === '') return null;
+    const value = Number(item.fcstValue);
+    if (!Number.isFinite(value) || value <= -900 ||
+        (item.category === 'WSD' && value < 0) ||
+        (item.category === 'POP' && (value < 0 || value > 100))) return null;
+    values[item.category].set(item.fcstTime, value);
+  }
+  // 일부 시간만으로 하루 최댓값을 오인하지 않는다.
+  const hours = Array.from({ length: 24 }, (_, h) => String(h).padStart(2, '0') + '00');
+  if (!values.TMX.size || hours.some(h => !values.WSD.has(h) || !values.POP.has(h))) return null;
+  const tempMax = Math.max(...values.TMX.values());
+  const windMax = Math.max(...values.WSD.values());
+  const rainProb = Math.max(...values.POP.values());
   return { tempMax, windMax: testWind ? 12 : windMax, rainProb };
 }
 
