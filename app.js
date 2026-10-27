@@ -1,8 +1,8 @@
 // app.js – 화면 동작 (목록 그리기, 일정 추가)
 
-let baseTasks = [];
-let addedTasks = [];
 let tasks = [];
+let tasksDb = null;
+let savingTask = false;
 let weatherByRegion = {};
 let selectedFilter = 'all';
 let tasksLoading = true;
@@ -57,7 +57,33 @@ async function loadWeather() {
 
 function isTask(task) {
   return task && ['title', 'region', 'kind', 'owner'].every(key =>
-    typeof task[key] === 'string' && task[key].trim().length > 0);
+    typeof task[key] === 'string' && task[key].trim().length > 0) &&
+    Object.hasOwn(REGIONS, task.region) && ['야외', '고소', '실내'].includes(task.kind);
+}
+
+function getTasksDb() {
+  if (tasksDb) return tasksDb;
+  if (typeof SUPABASE_URL !== 'string' || !SUPABASE_URL.trim() ||
+      typeof SUPABASE_PUBLIC_KEY !== 'string' || !SUPABASE_PUBLIC_KEY.trim()) {
+    throw new Error('config.js에 Supabase 주소와 공개용 키를 입력해 주세요.');
+  }
+  if (!window.supabase?.createClient) throw new Error('Supabase 스크립트를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.');
+  const key = SUPABASE_PUBLIC_KEY.trim();
+  let publicKey = key.startsWith('sb_publishable_');
+  if (!publicKey) {
+    try {
+      const payload = key.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+      publicKey = JSON.parse(atob(payload)).role === 'anon';
+    } catch { publicKey = false; }
+  }
+  if (!publicKey) throw new Error('공개용 publishable 또는 anon 키만 사용해 주세요. 비밀 키는 금지합니다.');
+  let url;
+  try { url = new URL(SUPABASE_URL); } catch { throw new Error('Supabase 주소 형식을 확인해 주세요.'); }
+  if (url.protocol !== 'https:') throw new Error('Supabase HTTPS 주소를 입력해 주세요.');
+  tasksDb = window.supabase.createClient(url.origin, key, {
+    auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false },
+  });
+  return tasksDb;
 }
 
 async function loadTasks() {
@@ -67,36 +93,33 @@ async function loadTasks() {
   const button = document.querySelector('#taskForm button');
   button.disabled = true;
   status.textContent = '일정을 불러오는 중입니다.';
-  baseTasks = [];
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 10000);
   try {
-    const response = await fetch('data/tasks.json', { signal: controller.signal });
-    if (!response.ok) throw new Error('일정 파일 읽기 실패');
-    const data = await response.json();
-    if (!Array.isArray(data) || !data.every(isTask)) throw new Error('일정 형식 오류');
-    baseTasks = data;
-    status.textContent = '';
-  } catch {
-    status.textContent = window.location.protocol === 'file:'
-      ? '배포 주소로 열어 주세요'
-      : '기본 일정 파일을 읽지 못했습니다. 잠시 후 새로고침해 주세요.';
+    const db = getTasksDb();
+    const loaded = [];
+    // Supabase의 기본 반환 한도(1000건)를 넘는 목록도 끝까지 읽는다.
+    for (let start = 0; ; start += 1000) {
+      const { data, error } = await db.from('wx_tasks')
+        .select('id,created_at,title,region,kind,owner')
+        .order('created_at', { ascending: true }).order('id', { ascending: true })
+        .range(start, start + 999).abortSignal(controller.signal);
+      if (error || !Array.isArray(data) || !data.every(isTask)) throw new Error('조회 실패');
+      loaded.push(...data);
+      if (data.length < 1000) break;
+    }
+    tasks = loaded;
+    status.textContent = tasks.length ? '' : '등록된 일정이 없습니다. 가상 일정을 추가해 주세요.';
+  } catch (error) {
+    status.textContent = tasksDb
+      ? '일정을 불러오지 못했습니다. 연결·setup.sql 실행·조회 권한을 확인한 뒤 새로고침해 주세요.'
+      : error.message;
   } finally {
     clearTimeout(timeout);
   }
-  // 기본 JSON을 먼저 읽고, 화면에서 추가한 일정만 뒤에 합친다.
-  try {
-    const saved = JSON.parse(localStorage.getItem('wx_added') || '[]');
-    if (!Array.isArray(saved) || !saved.every(isTask)) throw new Error('저장 형식 오류');
-    addedTasks = saved;
-  } catch {
-    addedTasks = [];
-    document.getElementById('msgBox').textContent = '브라우저에 저장된 추가 일정을 읽지 못했습니다.';
-  }
-  tasks = baseTasks.concat(addedTasks);
   tasksLoading = false;
   renderTasks();
-  button.disabled = false;
+  button.disabled = !tasksDb;
 }
 
 function weatherText(w) {
@@ -156,27 +179,42 @@ function setFilter(filter) {
   renderTasks();
 }
 
-function addTask(e) {
+async function addTask(e) {
   e.preventDefault();
+  if (tasksLoading || savingTask || !tasksDb) return;
   const t = {
     title: document.getElementById('titleInput').value.trim(),
     region: document.getElementById('regionInput').value,
     kind: document.getElementById('kindInput').value,
     owner: document.getElementById('ownerInput').value.trim(),
   };
-  if (!t.title || !t.owner) return;
-  const nextAdded = addedTasks.concat(t);
-  try {
-    localStorage.setItem('wx_added', JSON.stringify(nextAdded));
-  } catch {
-    document.getElementById('msgBox').textContent = '브라우저에 저장하지 못했습니다. 저장 공간과 권한을 확인해 주세요.';
+  const msg = document.getElementById('msgBox');
+  if (!isTask(t)) {
+    msg.textContent = '일정 이름·담당을 입력하고 허용된 지역·구분을 선택해 주세요.';
     return;
   }
-  addedTasks = nextAdded;
-  tasks = baseTasks.concat(addedTasks);
-  document.getElementById('msgBox').textContent = '';
-  e.target.reset();
-  renderTasks();
+  savingTask = true;
+  const button = document.querySelector('#taskForm button');
+  button.disabled = true;
+  msg.textContent = '저장 중입니다.';
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10000);
+  try {
+    const { data, error } = await tasksDb.from('wx_tasks').insert(t)
+      .select('id,created_at,title,region,kind,owner').single().abortSignal(controller.signal);
+    if (error || !isTask(data)) throw new Error('저장 실패');
+    tasks.push(data);
+    document.getElementById('taskStatus').textContent = '';
+    msg.textContent = 'Supabase에 저장했습니다.';
+    e.target.reset();
+    renderTasks();
+  } catch {
+    msg.textContent = '저장을 확인하지 못했습니다. 새로고침으로 등록 여부를 확인한 뒤 다시 시도해 주세요.';
+  } finally {
+    clearTimeout(timeout);
+    savingTask = false;
+    button.disabled = false;
+  }
 }
 
 document.getElementById('taskForm').addEventListener('submit', addTask);
